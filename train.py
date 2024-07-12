@@ -2,8 +2,13 @@ import json
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-TRAIN_PATH = "./data/train_ans.jsonl"
-EVAL_PATH = "./data/eval_ans.jsonl"
+# NOTE: change the suffix for different task:
+# 1. ans for only answer mask
+# 2. num for only operand mask
+# 3. mix for both answer and operand mask
+
+TRAIN_PATH = "./data/train_mix.jsonl"
+EVAL_PATH = "./data/eval_mix.jsonl"
 
 class JSONLDataset(Dataset):
     def __init__(self, file_path):
@@ -27,8 +32,8 @@ def create_dataloader(file_path, batch_size=256, shuffle=True, num_workers=0):
     dataset = JSONLDataset(file_path)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
-train_dataloader = create_dataloader(TRAIN_PATH, batch_size=256, shuffle=True)
-val_dataloader = create_dataloader(EVAL_PATH, batch_size=256, shuffle=False)
+train_dataloader = create_dataloader(TRAIN_PATH, batch_size=1024, shuffle=True)
+val_dataloader = create_dataloader(EVAL_PATH, batch_size=1024, shuffle=False)
 
 
 # prepare the model
@@ -36,10 +41,10 @@ from modeling import create_custom_bert_model
 from tokenizer import DEFAULT_TOKENIZER
 DEFAULT_CONFIG={
     "vocab_size": DEFAULT_TOKENIZER.get_vocab_size(),
-    "hidden_size": 128,
+    "hidden_size": 512,
     "num_hidden_layers": 8,
     "num_attention_heads": 8,
-    "intermediate_size": 128 * 4,
+    "intermediate_size": 512 * 4,
     "hidden_act": "gelu",
     "hidden_dropout_prob": 0.0,
     "attention_probs_dropout_prob": 0.1,
@@ -59,10 +64,10 @@ def train_mlm(model, train_loader, val_loader, epochs=3, learning_rate=2e-5, dev
 
     optimizer = AdamW(model.parameters(), lr=learning_rate)
     total_steps = len(train_loader) * epochs
-    # cosine
-    from transformers import get_cosine_schedule_with_warmup
-    scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
-    
+
+    from transformers import get_linear_schedule_with_warmup
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
+
     model.to(device)
 
     for epoch in range(epochs):
@@ -108,5 +113,5 @@ def train_mlm(model, train_loader, val_loader, epochs=3, learning_rate=2e-5, dev
 
 
 if __name__ == "__main__":
-    model = train_mlm(model, train_dataloader, val_dataloader, epochs=15, learning_rate=1e-3, device="cuda:0")
+    model = train_mlm(model, train_dataloader, val_dataloader, epochs=100, learning_rate=5e-5, device="cuda:0")
     model.save_pretrained("./model")

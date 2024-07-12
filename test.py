@@ -9,6 +9,7 @@ from train import JSONLDataset
 from tokenizer import DEFAULT_TOKENIZER
 
 # evaluate
+# NOTE: tested on all three eval datasets
 for eval_path in ["./data/eval_ans.jsonl", "./data/eval_num.jsonl", "./data/eval_mix.jsonl"]:
     eval_dataset = JSONLDataset(eval_path)
 

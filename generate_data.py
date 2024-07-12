@@ -4,8 +4,8 @@
 """
 
 # from tokenizer import MAX_NUMBER
-MAX_NUMBER=100
-MOD=101
+MAX_NUMBER=10
+MOD=11
 assert MAX_NUMBER < MOD, f"MAX_NUMBER should be less than {MOD}"
 
 NUMBER_SET=list(range(MAX_NUMBER + 1))
@@ -166,8 +166,8 @@ def generate_expressions(n_samples, max_depth, op_ratios):
     for _ in tqdm(range(n_samples)):
         expr, ans = generate_expr(max_depth, op_ratios)
         expr_str = str(expr)
-        # expr = EXPRESSION_PATTERN.format(ans, expr_str)
-        expr = EXPRESSION_PATTERN.format(expr_str, ans)
+        expr = EXPRESSION_PATTERN.format(ans, expr_str)
+        # expr = EXPRESSION_PATTERN.format(expr_str, ans)
         samples.append(expr)
 
     return samples
@@ -184,7 +184,7 @@ def generate_mlm_samples(n_samples, max_depth, op_ratios, max_length, ans_mask_r
         number_mask = DEFAULT_TOKENIZER.get_number_mask(encoded['input_ids'])
         masked_idx = [i for i, mask in enumerate(number_mask) if mask == 1]
         if random.random() < ans_mask_ratio:
-            masked_idx = masked_idx[-1]
+            masked_idx = masked_idx[0]
         else:
             masked_idx = random.choice(masked_idx[1:])
 
@@ -275,5 +275,5 @@ def generate_datasets(train_count, eval_count, max_depth, op_ratios, max_length,
 
 # set seed and generate
 random.seed(42)
-# generate_datasets(10000, 100, 1, [0.3, 0.3, 0.3, 0.1], 16, 0.5)
-generate_datasets(1000000, 100, 1, [1.0, 0.0, 0.0, 0.0], 16, 0.5)
+generate_datasets(100000, 100, 2, [0.3, 0.3, 0.3, 0.1], 16, 0.5)
+# generate_datasets(100000, 100, 2, [1.0, 0.0, 0.0, 0.0], 10, 0.5)
