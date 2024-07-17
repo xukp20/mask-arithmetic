@@ -7,7 +7,7 @@ DEFAULT_VOCAB = [
     # separated tokens for each number
     str(i) for i in range(MAX_NUMBER + 1)
 ] + [
-    "+", "-", "*", "/", "(", ")", "=", "[MASK]", "[PAD]", "[UNK]"
+    "+", "-", "*", "/", "(", ")", "=", ":", "[MASK]", "[PAD]", "[UNK]"
 ]
 
 IGNORE_INDEX=-100
