@@ -10,14 +10,14 @@ from torch.utils.data import Dataset, DataLoader
 import os
 BASE_DATA_PATH = "./data"
 TRAIN_PATHS = [
-    "train_def_eq.jsonl"
+    "train_eq.jsonl"
 ]
 
 TRAIN_PATHS = [os.path.join(BASE_DATA_PATH, path) for path in TRAIN_PATHS]
 
 EVAL_PATHS = [
-    "eval_def_def.jsonl",
-    "eval_def_num.jsonl",
+    # "eval_def_def.jsonl",
+    # "eval_def_num.jsonl",
     "eval_eq.jsonl",
 ]
 
@@ -80,13 +80,20 @@ DEFAULT_CONFIG={
 }
 
 # model = create_custom_bert_model(**DEFAULT_CONFIG)
-model = create_custom_def_model()
+model = create_custom_def_model(DEFAULT_TOKENIZER)
 
 # train
 from tqdm import tqdm
 from torch.optim import AdamW
 
 def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, device="cpu"):
+    # add wandb 
+    import wandb
+    wandb.init(
+        project='mask-arithmetic',
+        entity='xukp20',
+    )
+    
     # check the number of parameters
     print(f"Number of parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
@@ -101,13 +108,23 @@ def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, de
     for epoch in range(epochs):
         model.train()
         total_loss = 0
-        for batch in tqdm(train_loader, desc=f'Epoch {epoch + 1}/{epochs}'):
+        for i, batch in tqdm(enumerate(train_loader), desc=f'Epoch {epoch + 1}/{epochs}', total=len(train_loader)):
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
             outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs.loss
+            step = epoch * len(train_loader) + i
+            if not isinstance(loss, dict):
+                tqdm.write(f'Loss: {loss.item():.4f}')
+                wandb.log({"train/loss": loss.item()}, step=step)
+            else:
+                for key, value in loss.items():
+                    tqdm.write(f'{key}: {value.item():.4f}')
+                    wandb.log({f"train/{key}": value.item()}, step=step)
+                loss = loss['loss']
+
 
             optimizer.zero_grad()
             loss.backward()
@@ -116,7 +133,6 @@ def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, de
 
             total_loss += loss.item()
 
-            tqdm.write(f'Loss: {loss.item():.4f}')
 
         avg_train_loss = total_loss / len(train_loader)
         print(f'Average train loss: {avg_train_loss:.4f}')
@@ -126,7 +142,7 @@ def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, de
         
         with torch.no_grad():
             for val_name, val_loader in val_loaders.items():
-                total_eval_loss = 0
+                total_eval_loss = {}
                 for batch in tqdm(val_loader, desc='Validation'):
                     input_ids = batch['input_ids'].to(device)
                     attention_mask = batch['attention_mask'].to(device)
@@ -134,15 +150,31 @@ def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, de
 
                     outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
                     loss = outputs.loss
-                    total_eval_loss += loss.item()
+                    
+                    if not isinstance(loss, dict):
+                        if 'loss' not in total_eval_loss:
+                            total_eval_loss['loss'] = 0
+                        total_eval_loss['loss'] += loss.item()
+                    else:
+                        for key, value in loss.items():
+                            if key not in total_eval_loss:
+                                total_eval_loss[key] = 0
+                            total_eval_loss[key] += value.item()
 
-                avg_val_loss = total_eval_loss / len(val_loader)
-                print(f'Average validation loss on {val_name}: {avg_val_loss:.4f}')
-
+                avg_val_loss = {
+                    key: value / len(val_loader)
+                    for key, value in total_eval_loss.items()
+                }
+                print(f'Average validation loss on {val_name}:')
+                for key, value in avg_val_loss.items():
+                    print(f'{key}: {value:.4f}')
+                    wandb.log({f"{val_name}/{key}": value}, step=step)
+                
 
     return model
 
 
 if __name__ == "__main__":
-    model = train_mlm(model, train_dataloader, val_dataloaders, epochs=25, learning_rate=2e-4, device="cuda:0")
+    model = train_mlm(model, train_dataloader, val_dataloaders, epochs=15, learning_rate=5e-4, device="cuda:0")
+    # model = train_mlm(model, train_dataloader, val_dataloaders, epochs=15, learning_rate=5e-4, device="cpu")
     model.save_pretrained("./def_model")

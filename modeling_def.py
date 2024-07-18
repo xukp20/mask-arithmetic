@@ -930,6 +930,72 @@ class LlamaModel(LlamaPreTrainedModel):
 
 
 IGNORE_INDEX=-100
+
+class L2_Loss(nn.Module):
+    def __init__(self):
+        super(L2_Loss, self).__init__()
+
+    def forward(self, hidden_states, labels, label_embeddings):
+        # use l2 loss
+        # flatten and drop the ignored index
+        flatten_hidden_states = hidden_states.view(-1, hidden_states.size(-1))
+        label_embeddings = label_embeddings.view(-1, label_embeddings.size(-1))
+        flatten_labels = labels.view(-1)
+        kept_indices = flatten_labels != IGNORE_INDEX
+        flatten_hidden_states = flatten_hidden_states[kept_indices]
+        flatten_label_embeddings = label_embeddings[kept_indices]
+        
+        # calculate the l2 loss
+        loss_fct = nn.MSELoss()
+        loss = loss_fct(flatten_hidden_states, flatten_label_embeddings)
+        return loss
+
+
+class InfoNCE_Loss(nn.Module):
+    def __init__(self):
+        super(InfoNCE_Loss, self).__init__()
+
+    def forward(self, hidden_states, labels, word_embeddings):
+        # hidden_states: [bs, seq_len, hidden_size]
+        # labels: [bs, seq_len]
+        # word_embeddings: [vocab_size, hidden_size]
+
+        # compute logits by mat mul of hidden_states and word_embeddings
+        logits = torch.matmul(hidden_states, word_embeddings.T) # [bs, seq_len, vocab_size]
+
+        # shift logits and labels
+        shift_logits = logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        # flatten the tokens
+        shift_logits = shift_logits.view(-1, shift_logits.size(-1))
+        shift_labels = shift_labels.view(-1).to(shift_logits.device)
+
+        # compute the loss
+        loss_fct = nn.CrossEntropyLoss()
+        loss = loss_fct(shift_logits, shift_labels)
+
+        return loss
+
+
+from tqdm import tqdm
+class Add_Mix_Loss(nn.Module):
+    def __init__(self, alpha=0.5):
+        super(Add_Mix_Loss, self).__init__()
+        self.alpha = alpha
+        self.l2_loss = L2_Loss()
+        self.infoNCE_loss = InfoNCE_Loss()
+
+    def forward(self, hidden_states, labels, word_embeddings, label_embeddings):
+        l2_loss = self.l2_loss(hidden_states, labels, label_embeddings)
+        # tqdm.write("l2_loss: " + str(l2_loss.detach().cpu().numpy()))
+        infoNCE_loss = self.infoNCE_loss(hidden_states, labels, word_embeddings)
+        # tqdm.write("infoNCE_loss: " + str(infoNCE_loss.detach().cpu().numpy()))
+
+        loss = self.alpha * l2_loss + (1 - self.alpha) * infoNCE_loss
+        # tqdm.write("loss: " + str(loss.detach().cpu().numpy()))
+
+        return loss, l2_loss, infoNCE_loss
+
 class LlamaForMLM(LlamaPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -971,20 +1037,23 @@ class LlamaForMLM(LlamaPreTrainedModel):
         
         loss = None
         if labels is not None:
-            # use l2 loss
-            # flatten and drop the ignored index
-            flatten_hidden_states = hidden_states.view(-1, hidden_states.size(-1))
-            flatten_labels = labels.view(-1)
-            kept_indices = flatten_labels != IGNORE_INDEX
-            flatten_hidden_states = flatten_hidden_states[kept_indices]
-            flatten_labels = flatten_labels[kept_indices]
-            
-            # get the word embeddings of the labels
-            label_embeddings = self.model.embed_tokens(flatten_labels)
-
-            # calculate the l2 loss
-            loss_fct = nn.MSELoss()
-            loss = loss_fct(flatten_hidden_states, label_embeddings)
+            # when get embeddings, fill -100 with 0
+            no_ignore_labels = labels.clone()
+            no_ignore_labels[labels == IGNORE_INDEX] = 0
+            label_embeddings = self.model.embed_tokens(no_ignore_labels)
+            word_embeddings = self.model.embed_tokens.weight
+            # loss_fct = L2_Loss()
+            # loss = loss_fct(hidden_states, labels, label_embeddings)
+            # loss_fct = InfoNCE_Loss()
+            # loss = loss_fct(hidden_states, labels, word_embeddings)
+            loss_fct = Add_Mix_Loss()
+            # loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
+            loss, l2_loss, infoNCE_loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
+            loss = {
+                "loss": loss,
+                "l2_loss": l2_loss,
+                "infoNCE_loss": infoNCE_loss
+            }
 
         if not return_dict:
             output = (hidden_states,)
@@ -995,10 +1064,10 @@ class LlamaForMLM(LlamaPreTrainedModel):
             hidden_states=hidden_states,
         )
 
-def create_custom_def_model():
+def create_custom_def_model(tokenizer):
     # create model
     config = LlamaConfig(
-        vocab_size=200,
+        vocab_size=tokenizer.get_vocab_size(),
         hidden_size=512,
         num_hidden_layers=6,
         num_attention_heads=8,
@@ -1010,7 +1079,7 @@ def create_custom_def_model():
         type_vocab_size=2,
         initializer_range=0.02,
         layer_norm_eps=1e-12,
-        pad_token_id=0,
+        pad_token_id=tokenizer.pad_token_id,
         gradient_checkpointing=False,
         pretraining_tp=1,
         rope_theta=10000,
@@ -1021,7 +1090,7 @@ def create_custom_def_model():
 
     model = LlamaForMLM(config)
 
-    if config.attn_implementation == "flash_attention_2":
+    if config._attn_implementation == "flash_attention_2":
         model = model.to("cuda").to(torch.float16)
 
     return model

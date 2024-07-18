@@ -1,0 +1,38 @@
+Number of parameters: 25229824
+loss: 2.9043
+l2_loss: 1.0004
+infoNCE_loss: 4.8082
+loss: 2.9269
+l2_loss: 0.9986
+infoNCE_loss: 4.8551
+Epoch 1/15:   0%|▏                                                              | 2/977 [00:02<15:30,  1.05it/s]
+loss: 2.8980
+l2_loss: 0.9978
+infoNCE_loss: 4.7983
+loss: 2.8799
+l2_loss: 0.9967
+infoNCE_loss: 4.7631
+loss: 2.8613
+l2_loss: 0.9958
+infoNCE_loss: 4.7267
+loss: 2.8293
+l2_loss: 0.9948
+
+Epoch 1/15:   1%|▌                                                              | 8/977 [00:05<11:29,  1.41it/s]
+Traceback (most recent call last):
+  File "/cephfs/xukangping/code/mask-arithmetic/train.py", line 178, in <module>
+    model = train_mlm(model, train_dataloader, val_dataloaders, epochs=15, learning_rate=5e-4, device="cuda:0")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/cephfs/xukangping/code/mask-arithmetic/train.py", line 134, in train_mlm
+    total_loss += loss.item()
+                  ^^^^^^^^^^^
+KeyboardInterrupt
+loss: 2.8294
+l2_loss: 0.9939
+infoNCE_loss: 4.6650
+loss: 2.8327
+l2_loss: 0.9930
+infoNCE_loss: 4.6725
+loss: 2.8359
+l2_loss: 0.9921
+infoNCE_loss: 4.6796

@@ -189,10 +189,11 @@ def generate_definition_samples(sample_values, max_depth, op_ratios):
     return samples
 
 
+from tqdm import tqdm
 EQUALITY_PATTERN="{} = {}"
 def generate_equality_samples(num_samples, max_depth, op_ratios):
     samples = []
-    for _ in range(num_samples):
+    for _ in tqdm(range(num_samples)):
         value = random.choice(NUMBER_SET)
         expr1, _ = generate_expr(max_depth, op_ratios, value)
         expr2, _ = generate_expr(max_depth, op_ratios, value)
@@ -491,7 +492,7 @@ if __name__ == "__main__":
     print(len(NUMBER_SET))
     def_train, def_eval = generate_def_datasets(train_sample_values, 100, k, ratios, length, mask_num_per_value)
     # generate eq data
-    eq_train, eq_eval = generate_equality_datasets(100000, 100, k, ratios, length)
+    eq_train, eq_eval = generate_equality_datasets(1000000, 100, k, ratios, length)
 
     # create a relatively balanced dataset of def and equality
     # by duplicating the def by |eq| / |def| \div 5, so it gives a 1:5 ratio

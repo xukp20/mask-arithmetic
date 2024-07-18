@@ -1,0 +1,1 @@
+{"train/loss": 0.47877028584480286, "_timestamp": 1721269853.762171, "train/l2_loss": 0.2236143797636032, "train/infoNCE_loss": 0.7339261770248413, "_runtime": 304.4814281463623, "_step": 1469, "eval_eq.jsonl/loss": 2.8867266178131104, "eval_eq.jsonl/l2_loss": 0.2235059142112732, "eval_eq.jsonl/infoNCE_loss": 5.549947261810303, "_wandb": {"runtime": 303}}
