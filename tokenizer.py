@@ -2,7 +2,8 @@
     Define the toy tokenizer with only vocabulary related to numbers and operations.
 """
 
-MAX_NUMBER=100
+# MAX_NUMBER=10
+MAX_NUMBER=30
 DEFAULT_VOCAB = [
     # separated tokens for each number
     str(i) for i in range(MAX_NUMBER + 1)
@@ -53,6 +54,9 @@ class ArithmeticTokenizer:
         }
 
     def decode(self, ids):
+        if isinstance(ids, int):
+            return self.id2token.get(ids, self.unk_token if ids != IGNORE_INDEX else "[-100]")
+
         ids = [int(id) for id in ids]
         return ' '.join([self.id2token.get(id, self.unk_token if id != IGNORE_INDEX else "[-100]") for id in ids])
 
@@ -73,5 +77,8 @@ class ArithmeticTokenizer:
 
     def get_mask_token(self):
         return self.mask_token
+
+    def get_unk_token_id(self):
+        return self.unk_token_id
 
 DEFAULT_TOKENIZER = ArithmeticTokenizer(DEFAULT_VOCAB)

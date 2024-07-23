@@ -7,7 +7,11 @@ from tokenizer import MAX_NUMBER
 MOD=101
 assert MAX_NUMBER < MOD, f"MAX_NUMBER should be less than {MOD}"
 
+# NUMBER_SET=list(range(MAX_NUMBER + 1))
+# try leave out one
 NUMBER_SET=list(range(MAX_NUMBER + 1))
+# remove 20
+NUMBER_SET.remove(20)
 
 class Bracket:
     def __init__(self, expr):
@@ -191,16 +195,28 @@ def generate_definition_samples(sample_values, max_depth, op_ratios):
 
 from tqdm import tqdm
 EQUALITY_PATTERN="{} = {}"
+def filter(expr1, expr2):
+    # drop if expr1 and expr2 are the same op and have same operands
+    if isinstance(expr1, BinaryOp) and isinstance(expr2, BinaryOp):
+        if expr1.op == expr2.op and ((expr1.left == expr2.left and expr1.right == expr2.right) or (expr1.left == expr2.right and expr1.right == expr2.left)):
+            return True
+    return False
+
 def generate_equality_samples(num_samples, max_depth, op_ratios):
     samples = []
-    for _ in tqdm(range(num_samples)):
+    tbar = tqdm(total=num_samples)
+    while len(samples) < num_samples:
         value = random.choice(NUMBER_SET)
         expr1, _ = generate_expr(max_depth, op_ratios, value)
         expr2, _ = generate_expr(max_depth, op_ratios, value)
+        if filter(expr1, expr2):
+            continue
+
         expr1_str = str(expr1)
         expr2_str = str(expr2)
         expr = EQUALITY_PATTERN.format(expr1_str, expr2_str)
         samples.append(expr)
+        tbar.update(1)
 
     return samples
 

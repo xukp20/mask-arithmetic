@@ -69,7 +69,7 @@ from tokenizer import DEFAULT_TOKENIZER
 DEFAULT_CONFIG={
     "vocab_size": DEFAULT_TOKENIZER.get_vocab_size(),
     "hidden_size": 128,
-    "num_hidden_layers": 16,
+    "num_hidden_layers": 4,
     "num_attention_heads": 8,
     "intermediate_size": 128 * 4,
     "hidden_act": "gelu",
@@ -85,6 +85,8 @@ model = create_custom_def_model(DEFAULT_TOKENIZER)
 # train
 from tqdm import tqdm
 from torch.optim import AdamW
+
+OUTPUT_PATH="./def_model_mix_30_wo_20"
 
 def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, device="cpu"):
     # add wandb 
@@ -169,12 +171,14 @@ def train_mlm(model, train_loader, val_loaders, epochs=3, learning_rate=2e-5, de
                 for key, value in avg_val_loss.items():
                     print(f'{key}: {value:.4f}')
                     wandb.log({f"{val_name}/{key}": value}, step=step)
-                
+
+        model.save_pretrained(OUTPUT_PATH + "/checkpoint-{}".format(epoch + 1))    
 
     return model
 
 
 if __name__ == "__main__":
-    model = train_mlm(model, train_dataloader, val_dataloaders, epochs=15, learning_rate=5e-4, device="cuda:0")
+    model = train_mlm(model, train_dataloader, val_dataloaders, epochs=100, learning_rate=5e-5, device="cuda:0")
+    # model = train_mlm(model, train_dataloader, val_dataloaders, epochs=100, learning_rate=2e-4, device="cuda:0")
     # model = train_mlm(model, train_dataloader, val_dataloaders, epochs=15, learning_rate=5e-4, device="cpu")
-    model.save_pretrained("./def_model")
+    model.save_pretrained(OUTPUT_PATH)

@@ -187,3 +187,27 @@
 2024-07-18 13:07:02,024 INFO    Thread-12 :11582 [dir_watcher.py:_on_file_modified():288] file/dir modified: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/output.log
 2024-07-18 13:07:02,076 DEBUG   HandlerThread:11582 [handler.py:handle_request():158] handle_request: poll_exit
 2024-07-18 13:07:03,545 INFO    wandb-upload_1:11582 [upload_job.py:push():85] Skipped uploading /root/.local/share/wandb/artifacts/staging/tmpqgwufmmc
+2024-07-18 13:07:03,858 WARNING StreamThr :11582 [internal.py:is_dead():413] Internal process exiting, parent pid 11420 disappeared
+2024-07-18 13:07:03,858 ERROR   StreamThr :11582 [internal.py:wandb_internal():151] Internal process shutdown.
+2024-07-18 13:07:04,076 INFO    HandlerThread:11582 [handler.py:finish():882] shutting down handler
+2024-07-18 13:07:04,076 INFO    WriterThread:11582 [datastore.py:close():296] close: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/run-b975y2lz.wandb
+2024-07-18 13:07:04,129 INFO    wandb-upload_0:11582 [upload_job.py:push():88] Uploaded file /tmp/tmpvdr7r08b/wandb-job.json
+2024-07-18 13:07:05,976 INFO    SenderThread:11582 [sender.py:send_artifact():1530] sent artifact job-git_github.com_xukp20_mask-arithmetic.git_train.py - {'id': 'QXJ0aWZhY3Q6OTk0MzUwMTg3', 'state': 'PENDING', 'artifactSequence': {'id': 'QXJ0aWZhY3RDb2xsZWN0aW9uOjI4NDE1NTM1OA==', 'latestArtifact': {'id': 'QXJ0aWZhY3Q6OTkzNzY2ODIy', 'versionIndex': 0}}}
+2024-07-18 13:07:05,976 INFO    SenderThread:11582 [sender.py:finish():1608] shutting down sender
+2024-07-18 13:07:05,976 INFO    SenderThread:11582 [dir_watcher.py:finish():358] shutting down directory watcher
+2024-07-18 13:07:06,025 INFO    SenderThread:11582 [dir_watcher.py:finish():388] scan: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files
+2024-07-18 13:07:06,025 INFO    SenderThread:11582 [dir_watcher.py:finish():402] scan save: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/requirements.txt requirements.txt
+2024-07-18 13:07:06,025 INFO    SenderThread:11582 [dir_watcher.py:finish():402] scan save: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/wandb-metadata.json wandb-metadata.json
+2024-07-18 13:07:06,025 INFO    SenderThread:11582 [dir_watcher.py:finish():402] scan save: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/wandb-summary.json wandb-summary.json
+2024-07-18 13:07:06,027 INFO    SenderThread:11582 [dir_watcher.py:finish():402] scan save: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/conda-environment.yaml conda-environment.yaml
+2024-07-18 13:07:06,028 INFO    SenderThread:11582 [dir_watcher.py:finish():402] scan save: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/output.log output.log
+2024-07-18 13:07:06,028 INFO    SenderThread:11582 [dir_watcher.py:finish():402] scan save: /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/config.yaml config.yaml
+2024-07-18 13:07:06,030 INFO    SenderThread:11582 [file_pusher.py:finish():169] shutting down file pusher
+2024-07-18 13:07:06,030 INFO    SenderThread:11582 [file_pusher.py:join():175] waiting for file pusher
+2024-07-18 13:07:06,911 INFO    wandb-upload_0:11582 [upload_job.py:push():130] Uploaded file /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/wandb-summary.json
+2024-07-18 13:07:07,334 INFO    wandb-upload_1:11582 [upload_job.py:push():130] Uploaded file /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/requirements.txt
+2024-07-18 13:07:07,664 INFO    wandb-upload_3:11582 [upload_job.py:push():130] Uploaded file /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/output.log
+2024-07-18 13:07:07,739 INFO    wandb-upload_4:11582 [upload_job.py:push():130] Uploaded file /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/config.yaml
+2024-07-18 13:07:07,740 INFO    wandb-upload_2:11582 [upload_job.py:push():130] Uploaded file /cephfs/xukangping/code/mask-arithmetic/wandb/run-20240718_130646-b975y2lz/files/conda-environment.yaml
+2024-07-18 13:07:08,030 INFO    SenderThread:11582 [file_stream.py:finish():601] file stream finish called
+2024-07-18 13:07:08,274 INFO    SenderThread:11582 [file_stream.py:finish():605] file stream finish is done

@@ -1,4 +1,4 @@
-MODEL_PATH="./def_model"
+MODEL_PATH="./def_model_mix_30_wo_20/checkpoint-10"
 MODEL_TYPE="l2" # "ce" or "l2"
 
 # Load the model
@@ -49,7 +49,7 @@ def l2_model_predict(model, outputs, input_ids, labels):
     mask_hidden_states = hidden_states[mask_indices]    # [bs, hidden_size]
     mask_labels = labels[mask_indices]
 
-    # 1. predict, find the top cos sim between mask hidden and all the tokens
+    # 1. predict, find the smallest l2 between mask hidden and all the tokens
     embedding = model.get_input_embeddings()
     all_tokens_embedding = embedding.weight # [vocab_size, hidden_size]
     mask_labels_embedding = all_tokens_embedding[mask_labels]   # [bs, hidden_size]
@@ -59,7 +59,8 @@ def l2_model_predict(model, outputs, input_ids, labels):
     l2_distance = torch.cdist(mask_hidden_states, all_tokens_embedding, p=2)   # [bs, vocab_size]
     print(l2_distance)
     # 2. get the top 1
-    _, predicted = torch.topk(l2_distance, 1, largest=False)
+    distance, predicted = torch.topk(l2_distance, 1, largest=False)
+    print(distance, predicted)
     predicted = predicted.squeeze(0)
 
     # Decode
@@ -90,7 +91,7 @@ for eval_path in ["./data/eval_eq.jsonl"]:
     total = 0
     if MODEL_TYPE == "l2":
         # record the cos sim between the predicted and the label
-        cos_sims = []
+        l2_distances = []
 
     for sample in eval_dataset:
         input_ids = sample['input_ids'].unsqueeze(0)
@@ -116,13 +117,13 @@ for eval_path in ["./data/eval_eq.jsonl"]:
             if predicted == labels:
                 correct += 1
         elif MODEL_TYPE == "l2":
-            c, t, cos_sim = l2_model_predict(model, outputs, input_ids, labels)
+            c, t, l2 = l2_model_predict(model, outputs, input_ids, labels)
             correct += c
             total += t
-            cos_sims.extend(cos_sim)
-    
+            l2_distances.extend(l2)
+
     if MODEL_TYPE == "l2":
         print(f"Accuracy for {eval_path}: {correct / total * 100:.2f}%")
-        print(f"Average Cosine Similarity: {sum(cos_sims) / len(cos_sims):.4f}")
+        print(f"Average L2 distance: {sum(l2_distances) / len(l2_distances):.2f}")
     else:
         print(f"Accuracy for {eval_path}: {correct / total * 100:.2f}%")

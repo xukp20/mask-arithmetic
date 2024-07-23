@@ -951,6 +951,59 @@ class L2_Loss(nn.Module):
         return loss
 
 
+class Contrastive_L2_Loss(nn.Module):
+    """
+        Contrastive L2 loss: distance between matched hidden and label embedding - distances between mismatched hidden and label embedding
+    """
+    def __init__(self, neg_count=1):
+        super(Contrastive_L2_Loss, self).__init__()
+        self.neg_count = neg_count
+
+    def forward(self, hidden_states, labels, label_embeddings):
+        # hidden_states: [bs, seq_len, hidden_size]
+        # labels: [bs, seq_len]
+        # label_embeddings: [bs, seq_len, hidden_size]
+
+        flatten_hidden_states = hidden_states.view(-1, hidden_states.size(-1))
+        label_embeddings = label_embeddings.view(-1, label_embeddings.size(-1))
+        flatten_labels = labels.view(-1)
+        kept_indices = flatten_labels != IGNORE_INDEX
+        flatten_hidden_states = flatten_hidden_states[kept_indices]
+        flatten_label_embeddings = label_embeddings[kept_indices]
+        flatten_labels = flatten_labels[kept_indices]
+
+        # for each match, choose one mismatch label_embedding that is from a different label id 
+        # and calculate the contrastive loss
+        # 1. take all positions that are not the same as the label at the position
+        different_ids = flatten_labels != flatten_labels.unsqueeze(1)  # [bs*seq_len, bs*seq_len]
+        # pick out neg_count different label embeddings for each position
+        # sample out neg count for each row, where different ids is True
+
+        def get_neg_ids(different_ids, neg_count):
+            neg_ids = []
+            for i in range(different_ids.size(0)):
+                neg_id = torch.where(different_ids[i] == 1)[0]
+                neg_id = neg_id[torch.randperm(neg_id.size(0))[:neg_count]]
+                neg_ids.append(neg_id)
+            return torch.stack(neg_ids, dim=0)
+
+        neg_ids = get_neg_ids(different_ids, self.neg_count)    # [bs*seq_len, neg_count]
+        # get the negative label embeddings
+        neg_label_embeddings = flatten_label_embeddings[neg_ids]  # [bs*seq_len, neg_count, hidden_size]
+
+        # calculate the match l2 distance 
+        loss_fct = nn.MSELoss()
+        match_l2 = loss_fct(flatten_hidden_states, flatten_label_embeddings)
+
+        # calculate the mismatch l2 distance
+        neg_label_embeddings = neg_label_embeddings.view(-1, neg_label_embeddings.size(-1))
+        expanded_hidden_states = flatten_hidden_states.unsqueeze(1).expand(-1, self.neg_count, -1).contiguous().view(-1, flatten_hidden_states.size(-1))
+        mismatch_l2 = loss_fct(expanded_hidden_states, neg_label_embeddings)
+        loss = match_l2 - mismatch_l2
+
+        return loss, match_l2, mismatch_l2
+
+
 class InfoNCE_Loss(nn.Module):
     def __init__(self):
         super(InfoNCE_Loss, self).__init__()
@@ -1046,14 +1099,22 @@ class LlamaForMLM(LlamaPreTrainedModel):
             # loss = loss_fct(hidden_states, labels, label_embeddings)
             # loss_fct = InfoNCE_Loss()
             # loss = loss_fct(hidden_states, labels, word_embeddings)
-            loss_fct = Add_Mix_Loss()
-            # loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
+            loss_fct = Add_Mix_Loss(alpha=0.5)
+            loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
             loss, l2_loss, infoNCE_loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
             loss = {
                 "loss": loss,
                 "l2_loss": l2_loss,
                 "infoNCE_loss": infoNCE_loss
             }
+            # loss_fct = Contrastive_L2_Loss(neg_count=5)
+            # loss, match_l2, mismatch_l2 = loss_fct(hidden_states, labels, label_embeddings)
+            # loss = {
+            #     "loss": loss,
+            #     "match_l2": match_l2,
+            #     "mismatch_l2": mismatch_l2
+            # }
+        
 
         if not return_dict:
             output = (hidden_states,)
@@ -1064,6 +1125,31 @@ class LlamaForMLM(LlamaPreTrainedModel):
             hidden_states=hidden_states,
         )
 
+    # tool function for evaluation: generate the output hidden states of the masked tokens
+    def get_mask_hidden_states(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        position_ids=None,
+        inputs_embeds=None,
+        mask_positions=None,
+    ):
+        outputs = self.model(
+            input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            inputs_embeds=inputs_embeds,
+            return_dict=True,
+        )
+
+        if mask_positions is None:
+            print("Warning: mask_positions is None, return all hidden states")
+            return outputs.last_hidden_state
+        else:
+            return outputs.last_hidden_state[mask_positions]
+
+
+UNUSED_VOCAB_SIZE=20
 def create_custom_def_model(tokenizer):
     # create model
     config = LlamaConfig(
