@@ -944,10 +944,13 @@ class L2_Loss(nn.Module):
         kept_indices = flatten_labels != IGNORE_INDEX
         flatten_hidden_states = flatten_hidden_states[kept_indices]
         flatten_label_embeddings = label_embeddings[kept_indices]
-        
+
         # calculate the l2 loss
-        loss_fct = nn.MSELoss()
+        loss_fct = nn.MSELoss(reduction="mean")
         loss = loss_fct(flatten_hidden_states, flatten_label_embeddings)
+        # multiply by hidden_size
+        # loss = loss * hidden_states.size(-1)
+
         return loss
 
 
@@ -1107,7 +1110,7 @@ class LlamaForMLM(LlamaPreTrainedModel):
             # loss = loss_fct(hidden_states, labels, label_embeddings)
             # loss_fct = InfoNCE_Loss()
             # loss = loss_fct(hidden_states, labels, word_embeddings)
-            loss_fct = Add_Mix_Loss(alpha=0.5)
+            loss_fct = Add_Mix_Loss(alpha=0.8)
             loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
             loss, l2_loss, infoNCE_loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
             loss = {
