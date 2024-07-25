@@ -34,17 +34,24 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # add extra arguments
-    parser.add_argument("--train_file", type=str, help="Path to the training file")
-    parser.add_argument("--eval_file", type=str, help="Path to the evaluation file")
+    parser.add_argument("--train_files", type=str, help="Path to the training files", action='append')
+    parser.add_argument("--train_sizes", type=int, help="The size of the training files", action='append')
+    parser.add_argument("--eval_files", type=str, help="Path to the evaluation file", action='append')
+    parser.add_argument("--eval_sizes", type=int, help="The size of the evaluation files", action='append')
     parser.add_argument("--output_dir", type=str, help="Path to the output directory", default="./output")
+    
+    # training settings
+    parser.add_argument("--load_embedding", type=str, help="Path to the embedding directory", default=None)
+    parser.add_argument("--load_model", type=str, help="Path to the model", default=None)
+    parser.add_argument("--fix_embedding", help="Whether to fix the embedding", action='store_true')
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
 
-    train_dataset = JsonlDataset(args.train_file)
-    eval_dataset = JsonlDataset(args.eval_file)
+    train_dataset = JsonlDataset(args.train_files, args.train_sizes)
+    eval_dataset = JsonlDataset(args.eval_files, args.eval_sizes)
 
     from transformers import PreTrainedTokenizerFast
     tokenizer = PreTrainedTokenizerFast.from_pretrained(DEFAULT_TOKENIZER)
@@ -53,7 +60,17 @@ def main():
     DEFAULT_CONFIG.pad_token_id = tokenizer.pad_token_id
     print(DEFAULT_CONFIG)
 
-    model = LlamaForMLM(DEFAULT_CONFIG)
+    if not args.load_model:
+        model = LlamaForMLM(DEFAULT_CONFIG)
+    else:
+        model = LlamaForMLM.from_pretrained(args.load_model)
+
+    if args.load_embedding:
+        model.load_embedding(args.load_embedding)
+    
+    if args.fix_embedding:
+        model.fix_embedding()
+
 
     # use cosine with warm up
     training_args = TrainingArguments(
@@ -63,13 +80,13 @@ def main():
         warmup_steps=100,
         overwrite_output_dir=True,
         num_train_epochs=300,
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=4,
+        per_device_train_batch_size=32,
+        per_device_eval_batch_size=32,
         logging_dir="./logs",
         logging_steps=10,
         evaluation_strategy="steps",
-        eval_steps=50,
-        save_steps=500,
+        eval_steps=500,
+        save_steps=10000,
         save_total_limit=5,
         report_to="wandb",
     )

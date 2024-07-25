@@ -10,19 +10,20 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--eval_file", type=str, help="Path to the evaluation file")
     parser.add_argument("--model_path", type=str, help="Path to the model", default="./output")
-
+    parser.add_argument("--eval_size", type=int, help="The size of the evaluation file", default=None)
     return parser.parse_args()
 
 
+from tqdm import tqdm
 def main():
     args = parse_args()
 
-    dataloader = create_dataloader(args.eval_file, batch_size=1)
+    dataloader = create_dataloader(args.eval_file, batch_size=1, sizes=args.eval_size)
 
     from transformers import PreTrainedTokenizerFast
     tokenizer = PreTrainedTokenizerFast.from_pretrained(DEFAULT_TOKENIZER)
 
-    model = LlamaForMLM.from_pretrained(args.model_path)
+    model = LlamaForMLM.from_pretrained(args.model_path, device_map="cuda:0" if torch.cuda.is_available() else "cpu")
     model.eval()
 
     def l2_predict(model, input_ids, attention_mask, labels):
@@ -106,10 +107,10 @@ def main():
     total = 0
     l2_distance = []
     top5_l2 = {i: [] for i in range(5)}
-    for batch in dataloader:
-        input_ids = batch["input_ids"]
-        attention_mask = batch["attention_mask"]
-        labels = batch["labels"]
+    for batch in tqdm(dataloader, total=len(dataloader)):
+        input_ids = batch["input_ids"].to(model.device)
+        attention_mask = batch["attention_mask"].to(model.device)
+        labels = batch["labels"].to(model.device)
 
         correct_, total_, l2_distance_, top5_l2_ = l2_predict(model, input_ids, attention_mask, labels)
         correct += correct_
@@ -124,15 +125,15 @@ def main():
         print(f"Top {i + 1} average L2 distance: {sum(top5_l2[i]) / len(top5_l2[i])}")
 
     # eval again with mlm_predict
-    dataloader = create_dataloader(args.eval_file, batch_size=1)
+    dataloader = create_dataloader(args.eval_file, batch_size=1, sizes=args.eval_size)
     correct = 0
     total = 0
     correct_logits = []
     top5_logits = {i: [] for i in range(5)}
-    for batch in dataloader:
-        input_ids = batch["input_ids"]
-        attention_mask = batch["attention_mask"]
-        labels = batch["labels"]
+    for batch in tqdm(dataloader, total=len(dataloader)):
+        input_ids = batch["input_ids"].to(model.device)
+        attention_mask = batch["attention_mask"].to(model.device)
+        labels = batch["labels"].to(model.device)
 
         correct_, total_, correct_logits_, top5_logits_ = mlm_predict(model, input_ids, attention_mask, labels)
         correct += correct_

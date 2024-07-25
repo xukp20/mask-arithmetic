@@ -1198,9 +1198,11 @@ class LlamaForMLM(LlamaPreTrainedModel):
             torch.save(embedding, os.path.join(save_directory, "embedding.pt"))
     
     def load_embedding(self, embedding_path):
-        embedding = torch.load(embedding_path)
+        embedding = torch.load(os.path.join(embedding_path, "embedding.pt"))
         self.embed_tokens.weight = nn.Parameter(embedding)
 
+    def fix_embedding(self):
+        self.embed_tokens.weight.requires_grad = False
 
 def create_custom_def_model(tokenizer):
     # create model

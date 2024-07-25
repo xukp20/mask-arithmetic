@@ -1,5 +1,5 @@
 """
-    Generate training datasets from the raw data of def or computation.
+    Generate training datasets from the raw data of def.
 """
 
 import argparse, os, sys, json, random
