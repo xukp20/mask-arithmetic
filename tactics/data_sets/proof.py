@@ -11,7 +11,7 @@ class ProofStep:
     
     def to_dict(self):
         return {
-            'tactic': str(self.tactic),
+            'tactic': class2name(self.tactic),
             'position': self.position,
             'expr': self.expr.to_dict()
         }

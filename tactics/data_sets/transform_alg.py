@@ -323,9 +323,9 @@ if __name__ == "__main__":
     # expr = Expr([False, False, True, False, True, True], [4, 2, 3, 1, 2, 10])
     # target = Expr([True, False, True, False, True], [1, 1, 6, 2, 4])
 
-    # - 3 + 6 + 0 -> 8 + 1 + 1 - 7
-    expr = Expr([False, True, True], [3, 6, 0])
-    target = Expr([True, True, True, False], [8, 1, 1, 7])
+    # - 3 + 8 + 0 -> 10 + 1 + 1 - 7
+    expr = Expr([False, True, True], [3, 8, 0])
+    target = Expr([True, True, True, False], [10, 1, 1, 7])
 
     steps = get_path(expr, target, 0, 10)
     print("Tar:", target)

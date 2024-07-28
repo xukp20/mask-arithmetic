@@ -165,7 +165,11 @@ class TacticGenerator:
         return proofs
     
     def format_save_path(self, length, size):
-        return os.path.join(self.args.output_base, f"tactics_{length}_num_op{self.old_args.num_operands}_{size}.jsonl")
+        subdir = "proof_num_op" + '-'.join([str(num_op) for num_op in self.old_args.num_operands])
+        if not os.path.exists(os.path.join(self.args.output_base, subdir)):
+            os.makedirs(os.path.join(self.args.output_base, subdir))
+
+        return os.path.join(self.args.output_base, subdir, f"{length}.jsonl")
 
     def generate_proof(self, source, target):
         # apply bfs to find the best path

@@ -1018,18 +1018,30 @@ class InfoNCE_Loss(nn.Module):
 
         # compute logits by mat mul of hidden_states and word_embeddings
         logits = torch.matmul(hidden_states, word_embeddings.T) # [bs, seq_len, vocab_size]
+        
+        if torch.isnan(logits).any():
+            print("logits contains nan")
+            exit()
 
         # shift logits and labels
-        shift_logits = logits[..., :-1, :].contiguous()
-        shift_labels = labels[..., 1:].contiguous()
+        # shift_logits = logits[..., :-1, :].contiguous()
+        # shift_labels = labels[..., 1:].contiguous()
+        shift_logits = logits
+        shift_labels = labels
         # flatten the tokens
         shift_logits = shift_logits.view(-1, shift_logits.size(-1))
         shift_labels = shift_labels.view(-1).to(shift_logits.device)
 
         # compute the loss
         loss_fct = nn.CrossEntropyLoss()
+        if torch.isnan(shift_logits).any():
+            print("shift_logits contains nan")
+            exit()
+        
         loss = loss_fct(shift_logits, shift_labels)
 
+        if torch.isnan(loss).any():
+            print("infoNCE loss contains nan")
         return loss
 
 
@@ -1062,6 +1074,7 @@ class LlamaForMLM(LlamaPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
+        self.alpha = 0.5
 
     def get_input_embeddings(self):
         return self.embed_tokens
@@ -1110,7 +1123,7 @@ class LlamaForMLM(LlamaPreTrainedModel):
             # loss = loss_fct(hidden_states, labels, label_embeddings)
             # loss_fct = InfoNCE_Loss()
             # loss = loss_fct(hidden_states, labels, word_embeddings)
-            loss_fct = Add_Mix_Loss(alpha=0.8)
+            loss_fct = Add_Mix_Loss(alpha=self.alpha)
             loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
             loss, l2_loss, infoNCE_loss = loss_fct(hidden_states, labels, word_embeddings, label_embeddings)
             loss = {

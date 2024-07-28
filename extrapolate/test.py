@@ -8,9 +8,11 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser()
+
     parser.add_argument("--eval_file", type=str, help="Path to the evaluation file")
     parser.add_argument("--model_path", type=str, help="Path to the model", default="./output")
     parser.add_argument("--eval_size", type=int, help="The size of the evaluation file", default=None)
+    parser.add_argument("--tokenizer_path", type=str, help="Path to the tokenizer", default=DEFAULT_TOKENIZER)
     return parser.parse_args()
 
 
@@ -21,7 +23,7 @@ def main():
     dataloader = create_dataloader(args.eval_file, batch_size=1, sizes=args.eval_size)
 
     from transformers import PreTrainedTokenizerFast
-    tokenizer = PreTrainedTokenizerFast.from_pretrained(DEFAULT_TOKENIZER)
+    tokenizer = PreTrainedTokenizerFast.from_pretrained(args.tokenizer_path)
 
     model = LlamaForMLM.from_pretrained(args.model_path, device_map="cuda:0" if torch.cuda.is_available() else "cpu")
     model.eval()
@@ -96,6 +98,7 @@ def main():
         # get the predicted
         predicted = torch.argmax(logits, dim=-1)
         correct = (predicted == mask_labels).sum().item()
+        print(predicted, mask_labels)
         total = mask_labels.size(0)
 
         # logits for the correct label

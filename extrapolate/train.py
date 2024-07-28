@@ -39,11 +39,17 @@ def parse_args():
     parser.add_argument("--eval_files", type=str, help="Path to the evaluation file", action='append')
     parser.add_argument("--eval_sizes", type=int, help="The size of the evaluation files", action='append')
     parser.add_argument("--output_dir", type=str, help="Path to the output directory", default="./output")
-    
+    parser.add_argument("--tokenizer_path", type=str, help="Path to the tokenizer", default=DEFAULT_TOKENIZER)
+
     # training settings
     parser.add_argument("--load_embedding", type=str, help="Path to the embedding directory", default=None)
     parser.add_argument("--load_model", type=str, help="Path to the model", default=None)
     parser.add_argument("--fix_embedding", help="Whether to fix the embedding", action='store_true')
+    parser.add_argument("--epochs", type=int, help="The number of epochs", default=300)
+    parser.add_argument("--learning_rate", type=float, help="The learning rate", default=5e-5)
+
+    # model settings
+    parser.add_argument("--alpha", type=float, help="The alpha for the loss", default=0.5)
     return parser.parse_args()
 
 
@@ -54,7 +60,7 @@ def main():
     eval_dataset = JsonlDataset(args.eval_files, args.eval_sizes)
 
     from transformers import PreTrainedTokenizerFast
-    tokenizer = PreTrainedTokenizerFast.from_pretrained(DEFAULT_TOKENIZER)
+    tokenizer = PreTrainedTokenizerFast.from_pretrained(args.tokenizer_path)
     DEFAULT_CONFIG.vocab_size = tokenizer.vocab_size
     DEFAULT_CONFIG.max_position_embeddings = tokenizer.model_max_length
     DEFAULT_CONFIG.pad_token_id = tokenizer.pad_token_id
@@ -64,6 +70,7 @@ def main():
         model = LlamaForMLM(DEFAULT_CONFIG)
     else:
         model = LlamaForMLM.from_pretrained(args.load_model)
+    model.alpha = args.alpha
 
     if args.load_embedding:
         model.load_embedding(args.load_embedding)
@@ -74,16 +81,16 @@ def main():
 
     # use cosine with warm up
     training_args = TrainingArguments(
-        learning_rate=5e-5,
+        learning_rate=args.learning_rate,
         output_dir=args.output_dir,
         lr_scheduler_type="cosine",
         warmup_steps=100,
         overwrite_output_dir=True,
-        num_train_epochs=300,
+        num_train_epochs=args.epochs,
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         logging_dir="./logs",
-        logging_steps=10,
+        logging_steps=100,
         evaluation_strategy="steps",
         eval_steps=500,
         save_steps=10000,
