@@ -263,7 +263,7 @@ def get_path(source: Expr, target: Expr, lower: int, upper: int):
     # for i, step in enumerate(eliminate_target_steps):
     #     print(f"Step {i+1}: {step}")
 
-    reversed_eliminate_target_steps = get_reversed_steps(eliminate_target_steps, target)
+    reversed_eliminate_target_steps = get_reversed_steps(eliminate_target_steps, target, lower, upper)
     # for i, step in enumerate(reversed_eliminate_target_steps):
     #     print(f"Reversed step {i+1}: {step}")
 

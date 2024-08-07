@@ -9,7 +9,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate tactics for mask-arithmetic.')
-    parser.add_argument('--input_file', type=str, help='The path to the input file.', default='exprs_num_op2-5_values0-10_num_range0-10_num_exprs1000.json')
+    parser.add_argument('--input_file', type=str, help='The path to the input file.', default=None)
     parser.add_argument('--output_base', type=str, help='The base path to save the output to.', default='data')
 
     # settings: the range of operand numbers, total count
@@ -78,11 +78,26 @@ import copy
 
 class TacticGenerator:
     def __init__(self, args):
+        input_path = self.format_input_path(args)
+        self.output_dir = self.format_output_dir(args)
         self.old_args = args
         args.num_operands = list(parse_range(args.num_operands))
         self.args = args
-        input_path = os.path.join(args.output_base, args.input_file)
         self.expr_parser = ExprFileParser(input_path)
+
+    def format_input_path(self, args):
+        # base / lower-upper / exprs_num_op{num_op}_num_exprs1000.json
+        if not args.input_file:
+            args.input_file = f"exprs_num_op{args.num_operands}_num_exprs1000.json"
+        subdir = f"{args.lower}-{args.upper}"
+        return os.path.join(args.output_base, subdir, args.input_file)
+
+    def format_output_dir(self, args):
+        base_dir = os.path.join(args.output_base, f"{args.lower}-{args.upper}")
+        subdir = "proof_num_op" + args.num_operands
+        if not os.path.exists(os.path.join(base_dir, subdir)):
+            os.makedirs(os.path.join(base_dir, subdir))
+        return os.path.join(base_dir, subdir)
 
     def generate_tactics(self):
         # take all the exprs for each value
@@ -165,11 +180,7 @@ class TacticGenerator:
         return proofs
     
     def format_save_path(self, length, size):
-        subdir = "proof_num_op" + '-'.join([str(num_op) for num_op in self.old_args.num_operands])
-        if not os.path.exists(os.path.join(self.args.output_base, subdir)):
-            os.makedirs(os.path.join(self.args.output_base, subdir))
-
-        return os.path.join(self.args.output_base, subdir, f"{length}.jsonl")
+        return os.path.join(self.output_dir, f"{length}.jsonl")
 
     def generate_proof(self, source, target):
         # apply bfs to find the best path
@@ -209,7 +220,7 @@ class TacticGenerator:
         # bfs(source, target, self.args.lower, self.args.upper)
         steps = get_path(source, target, self.args.lower, self.args.upper)
         proof = Proof(source, target, steps)
-        if not proof.check_valid():
+        if not proof.check_valid(self.args.lower, self.args.upper):
             print(f"Warning: Invalid proof found: {proof}")
             exit()
             return None

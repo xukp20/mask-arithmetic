@@ -11,7 +11,7 @@ class Tactic:
         pass
 
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         """
         Apply the tactic to the expr.
 
@@ -43,7 +43,7 @@ class AddIncrease(Tactic):
     """
 
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # take the two 
             a_sign = expr.signs[position]
@@ -69,7 +69,7 @@ class AddDecrease(Tactic):
     - a - b = - <a-1> - <b+1>
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # take the two 
             a_sign = expr.signs[position]
@@ -96,7 +96,7 @@ class SubIncrease(Tactic):
     - a + b = - <a+1> + <b+1>
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # take the two 
             a_sign = expr.signs[position]
@@ -122,7 +122,7 @@ class SubDecrease(Tactic):
     - a + b = - <a-1> + <b-1>
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # take the two 
             a_sign = expr.signs[position]
@@ -147,7 +147,7 @@ class SplitAdd(Tactic):
     +-a = +-a + 0
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             sign_a = expr.signs[position]
             a = expr.nums[position]
@@ -162,7 +162,7 @@ class MergeAdd(Tactic):
     +-a + 0 = +-a
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             sign_a = expr.signs[position]
             a = expr.nums[position]
@@ -183,7 +183,7 @@ class SplitSub(Tactic):
     +-a = +-a - 0
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             sign_a = expr.signs[position]
             a = expr.nums[position]
@@ -198,7 +198,7 @@ class MergeSub(Tactic):
     +-a - 0 = +-a
     """
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             sign_a = expr.signs[position]
             a = expr.nums[position]
@@ -221,7 +221,7 @@ class MergeSub(Tactic):
 # - <a> + <b> = - <b> + <a>
 class Exchange(Tactic):
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             sign_a = expr.signs[position]
             a = expr.nums[position]
@@ -237,7 +237,7 @@ class Exchange(Tactic):
 # same for AddDecrease and SubDecrease
 class Increase(Tactic):
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # check signs
             sign_a = expr.signs[position]
@@ -253,7 +253,7 @@ class Increase(Tactic):
 
 class Decrease(Tactic):
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # check signs
             sign_a = expr.signs[position]
@@ -270,7 +270,7 @@ class Decrease(Tactic):
 # MergeAdd and MergeSub
 class Merge(Tactic):
     @staticmethod
-    def apply(expr, position, lower=0, upper=10):
+    def apply(expr, position, lower, upper):
         try:
             # check sign of the second number
             sign_b = expr.signs[position + 1]
@@ -317,7 +317,7 @@ def get_reverse_tactic(tactic, position, expr):
     elif tactic == Exchange:
         return Exchange, position
 
-def get_reversed_steps(steps, source_expr):
+def get_reversed_steps(steps, source_expr, lower, upper):
     from proof import ProofStep
     # go through the steps again
     reversed_steps = []
@@ -326,7 +326,7 @@ def get_reversed_steps(steps, source_expr):
         position = step.position
         new_tactic, new_position = get_reverse_tactic(tactic, position, source_expr)
         reversed_steps.append(ProofStep(new_tactic, new_position, source_expr))
-        source_expr = tactic.apply(source_expr, position)
+        source_expr = tactic.apply(source_expr, position, lower, upper)
     
     # reverse the steps
     reversed_steps = reversed_steps[::-1]

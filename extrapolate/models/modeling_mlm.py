@@ -1082,6 +1082,20 @@ class LlamaForMLM(LlamaPreTrainedModel):
     def set_input_embeddings(self, value):
         self.embed_tokens = value
 
+    def embed(self, input_ids):
+        # if there is embed_call
+        if hasattr(self, "embed_call"):
+            return self.embed_call(input_ids)
+        else:
+            return self.embed_tokens(input_ids)
+
+    def get_embedding_weights(self):
+        if hasattr(self, "embed_call"):
+            # use fused embedding
+            return self.get_fused_embeddings()
+        else:
+            return self.embed_tokens.weight
+
     def forward(
         self,
         input_ids=None,
@@ -1098,7 +1112,7 @@ class LlamaForMLM(LlamaPreTrainedModel):
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
-            inputs_embeds = self.embed_tokens(input_ids)
+            inputs_embeds = self.embed(input_ids)
 
         outputs = self.model(
             # never pass input_ids to the model
@@ -1117,8 +1131,8 @@ class LlamaForMLM(LlamaPreTrainedModel):
             # when get embeddings, fill -100 with 0
             no_ignore_labels = labels.clone()
             no_ignore_labels[labels == IGNORE_INDEX] = 0
-            label_embeddings = self.embed_tokens(no_ignore_labels)
-            word_embeddings = self.embed_tokens.weight
+            label_embeddings = self.embed(no_ignore_labels)
+            word_embeddings = self.get_embedding_weights()
             # loss_fct = L2_Loss()
             # loss = loss_fct(hidden_states, labels, label_embeddings)
             # loss_fct = InfoNCE_Loss()
@@ -1154,7 +1168,7 @@ class LlamaForMLM(LlamaPreTrainedModel):
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
-            inputs_embeds = self.embed_tokens(input_ids)
+            inputs_embeds = self.embed(input_ids)
 
         outputs = self.model(
             attention_mask=attention_mask,
@@ -1216,6 +1230,75 @@ class LlamaForMLM(LlamaPreTrainedModel):
 
     def fix_embedding(self):
         self.embed_tokens.weight.requires_grad = False
+
+    def init_one_hot_embedding(self):
+        # for id = i, init the vector as 1 at i-th position and 0 at other positions
+        weight = torch.zeros(self.config.vocab_size, self.config.hidden_size)
+        for i in range(self.config.vocab_size):
+            weight[i][i] = 1
+        self.embed_tokens.weight = nn.Parameter(weight)
+
+    def train_only_embeddings(self, trainable_ids):
+        # need to add extra embedding layer for the trainable embeddings
+        # create a new embedding layer
+        self.new_embed_tokens = nn.Embedding(self.config.vocab_size, self.config.hidden_size, self.config.pad_token_id)
+        # keep the mapping from trainable_ids to the new embedding ids
+        self.trainable_ids = trainable_ids
+        
+        # create a new call of embed_tokens
+        def embed_call(input_ids):
+            # use the old to get the embeddings
+            old_embeddings = self.embed_tokens(input_ids)
+            new_embeddings = self.new_embed_tokens(input_ids)
+            # create mask for trainable_ids
+            def set_mask(input_id, _):
+                if input_id in self.trainable_ids:
+                    return 1
+                return 0
+            # apply to all the input_ids in the tensor
+            mask = input_ids.clone().to("cpu")
+            mask.map_(mask, set_mask)
+            mask = mask.to(input_ids.device)
+            # mask = input_ids.clone()
+            # mask = torch.map(mask, input_ids, set_mask)
+            # apply the mask to the embeddings
+            # print(old_embeddings.size(), new_embeddings.size(), mask.size())
+            # print(mask[0])
+            # print(input_ids[0])
+            mask = mask.unsqueeze(-1)
+            embeddings = old_embeddings * (1 - mask) + new_embeddings * mask
+            return embeddings
+        
+        self.embed_call = embed_call
+        
+        # set all params to be not trainable
+        for param in self.parameters():
+            param.requires_grad = False
+
+        self.new_embed_tokens.weight.requires_grad = True
+
+    def get_fused_embeddings(self):
+        # fuse the embeddings
+        # create mask by the trainable_ids
+        def set_mask(input_id, _):
+            if input_id in self.trainable_ids:
+                return 1
+            return 0
+        old_weight = self.embed_tokens.weight
+        new_weight = self.new_embed_tokens.weight
+        ids = torch.arange(self.config.vocab_size)
+        mask = ids.clone().to("cpu")
+        mask.map_(mask, set_mask)
+        # apply the mask to the embeddings
+        mask = mask.unsqueeze(-1).to(old_weight.device)
+        weight = old_weight * (1 - mask) + new_weight * mask
+        return weight
+
+    def fuse_embeddings(self):
+        self.embed_tokens.weight = nn.Parameter(self.get_fused_embeddings())
+        # remove the new_embed_tokens
+        del self.new_embed_tokens
+
 
 def create_custom_def_model(tokenizer):
     # create model

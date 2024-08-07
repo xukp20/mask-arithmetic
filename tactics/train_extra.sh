@@ -5,12 +5,12 @@ cd ../extrapolate
 PROJECT_PATH=/cephfs/xukangping/code/mask-arithmetic
 DATA_BASE=$PROJECT_PATH/tactics/data_sets/data
 
-VALUES=0-10
+VALUES=0-11
 LENGTH_RANGE=1-5
-TRAIN_SIZE=20000
+TRAIN_SIZE=4000
 EVAL_SIZE=500
 TASK=position
-CONTAIN_NUM=all
+CONTAIN_NUM=11
 
 TRAIN_FILES=(
     $DATA_BASE/$VALUES/train_${TRAIN_SIZE}_${LENGTH_RANGE}_${CONTAIN_NUM}_${TASK}.jsonl
@@ -40,9 +40,9 @@ TOKENIZER_PATH=$PROJECT_PATH/tactics/data_sets/data/6_tactics_tokenizer
 
 ALPHA=0
 
-LEARNING_RATE=5e-5
+LEARNING_RATE=1e-2
 # LEARNING_RATE=1e-4
-EPOCHS=10
+EPOCHS=100
 
 command="python train.py \
     --output_dir $OUTPUT_DIR \
@@ -63,7 +63,7 @@ if [ $ONE_HOT -eq 1 ]; then
     command+=" --one_hot_embedding --fix_embedding"
 fi
 
-# TRAIN_ONLY_EMBEDDINGS=11
+TRAIN_ONLY_EMBEDDINGS=11
 
 if [ ! -z $TRAIN_ONLY_EMBEDDINGS ]; then
     for ID in ${TRAIN_ONLY_EMBEDDINGS[@]}; do
@@ -71,7 +71,7 @@ if [ ! -z $TRAIN_ONLY_EMBEDDINGS ]; then
     done
 fi
 
-# LOAD_MODEL=$PROJECT_PATH/tactics/outputs/${TASK}_0-10_10-15
+LOAD_MODEL=$PROJECT_PATH/tactics/outputs/${TASK}_0-10_10-15
 
 if [ ! -z $LOAD_MODEL ]; then
     command+=" --load_model $LOAD_MODEL"

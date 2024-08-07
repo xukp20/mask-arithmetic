@@ -78,23 +78,30 @@ from utils import parse_range
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate exprs for mask-arithmetic.')
-    parser.add_argument('--num_operands', type=str, help='The number of operands to generate the exprs for.', default='2-3')
+    parser.add_argument('--num_operands', type=str, help='The number of operands to generate the exprs for.', default='2-5')
     parser.add_argument('--values', type=str, help='The values to generate the exprs for.', default='0-10')
-    parser.add_argument('--num_range', type=str, help='The range of the operands.', default='0-10')
-    parser.add_argument('--num_exprs', type=int, help='Number of exprs to generate for each value.', default=1000)
+    parser.add_argument('--num_range', type=str, help='The range of the operands.', default=None)
+    parser.add_argument('--num_exprs', type=int, help='Number of exprs to generate for each value.', default=5000)
     parser.add_argument('--output_base', type=str, help='The base path to save the output to.', default='data')
     return parser.parse_args()
 
 
 def format_save_path(args):
-    return os.path.join(args.output_base, f"exprs_num_op{args.num_operands}_values{args.values}_num_range{args.num_range}_num_exprs{args.num_exprs}.json")
+    if not os.path.exists(os.path.join(args.output_base, args.values)):
+        os.makedirs(os.path.join(args.output_base, args.values))
+
+    return os.path.join(args.output_base, args.values, f"exprs_num_op{args.num_operands}_num_exprs{args.num_exprs}.json")
 
 
 def main():
     args = parse_args()
     num_operands = parse_range(args.num_operands)
     values = parse_range(args.values)
-    num_range = parse_range(args.num_range)
+    if not args.num_range:
+        num_range = values
+    else:
+        num_range = parse_range(args.num_range)
+
     exprs = generate_exprs(num_operands, values, num_range, args.num_exprs)
     save_path = format_save_path(args)
     with open(save_path, 'w') as f:

@@ -61,7 +61,7 @@ class Proof:
     def __len__(self):
         return len(self.steps)
 
-    def check_valid(self, lower=0, upper=10):
+    def check_valid(self, lower, upper):
         # check if the proof is valid
         current_expr = self.source
         for i, step in enumerate(self.steps):

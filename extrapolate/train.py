@@ -47,7 +47,8 @@ def parse_args():
     parser.add_argument("--fix_embedding", help="Whether to fix the embedding", action='store_true')
     parser.add_argument("--epochs", type=int, help="The number of epochs", default=300)
     parser.add_argument("--learning_rate", type=float, help="The learning rate", default=5e-5)
-
+    parser.add_argument("--one_hot_embedding", help="Whether to use one hot embedding", action='store_true')
+    parser.add_argument("--train_only_embeddings", type=int, action='append', help="Train only the embeddings for the specified ids", default=[])
     # model settings
     parser.add_argument("--alpha", type=float, help="The alpha for the loss", default=0.5)
     return parser.parse_args()
@@ -70,14 +71,29 @@ def main():
         model = LlamaForMLM(DEFAULT_CONFIG)
     else:
         model = LlamaForMLM.from_pretrained(args.load_model)
+        print(f"Load the model from {args.load_model}")
     model.alpha = args.alpha
 
+    if args.one_hot_embedding:
+        print("Use one hot embedding")
+        model.init_one_hot_embedding()
+
     if args.load_embedding:
+        print(f"Load the embedding from {args.load_embedding}")
         model.load_embedding(args.load_embedding)
     
     if args.fix_embedding:
+        print("Fix the embedding")
         model.fix_embedding()
+    
+    if args.train_only_embeddings:
+        print(f"Train only the embeddings for the specified ids: {args.train_only_embeddings}")
+        model.train_only_embeddings(args.train_only_embeddings)
 
+    # print all the trainable parameters
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(name)
 
     # use cosine with warm up
     training_args = TrainingArguments(
@@ -111,6 +127,10 @@ def main():
     wandb.init(project='mask-arithmetic', entity='xukp20')
 
     trainer.train()
+
+    if args.train_only_embeddings:
+        # needs to fuse 
+        model.fuse_embeddings()
 
     trainer.save_model(args.output_dir)
 

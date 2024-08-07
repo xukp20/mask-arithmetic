@@ -28,6 +28,9 @@ def main():
     model = LlamaForMLM.from_pretrained(args.model_path, device_map="cuda:0" if torch.cuda.is_available() else "cpu")
     model.eval()
 
+    # see the distribution of the embedding
+    print(model.get_input_embeddings().weight[:10])
+
     def l2_predict(model, input_ids, attention_mask, labels):
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
         hidden_states = outputs.hidden_states
@@ -92,13 +95,14 @@ def main():
         # compute logits
         embedding_weights = model.get_input_embeddings().weight # [vocab_size, hidden_size]
         logits = torch.matmul(mask_hidden_states, embedding_weights.T) # [mask_count, vocab_size]
+        # set the logits for 11 as -100
+        # logits[:, 11] = -100
 
         # get top 5
         top5_logits = torch.topk(logits, 5, largest=True, sorted=True)[0]
         # get the predicted
         predicted = torch.argmax(logits, dim=-1)
         correct = (predicted == mask_labels).sum().item()
-        print(predicted, mask_labels)
         total = mask_labels.size(0)
 
         # logits for the correct label
